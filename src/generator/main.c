@@ -25,12 +25,11 @@ static void stringFree(String *s) {
 	s->cap = 0;
 }
 
-int main(int argc, char **argv) {
+int main() {
 // Первая строка - название статьи. Разместить его в title и h1
 	char *title = NULL;
 	size_t title_len = 0;
-	getline (&title, &title_len, stdin);
-	if (NULL == title) {
+	if (getline (&title, &title_len, stdin) < 0 || NULL == title) {
 		fputs("Error reading title", stderr);
 		return 1;
 	}
