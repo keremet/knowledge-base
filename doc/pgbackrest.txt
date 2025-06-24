@@ -1,85 +1,69 @@
 pgBackRest в ALT Linux
-<h3>Установка PostgreSQL, создание базы, заполнение ее тестовыми данными</h3>
-Для тестирования потребуется PostgreSQL, поэтому установим его.
+pgBackRest используется для физического резервного копирования PostgreSQL.
+Если тестировать pgBackRest еще не на чем, надо <a href=postgresql.html>установить PostgreSQL и заполнить базу данных тестовыми данными</a>, чтобы потом проверить, как эти тестовые данные восстановятся.
+
+<h3>Установка pgBackRest</h3>
 <pre>
-sudo apt-get update
-sudo apt-get install postgresql15-1C-contrib
-sudo /etc/init.d/postgresql initdb
-sudo systemctl enable --now postgresql.service
+sudo <a href=https://www.altlinux.org/%D0%9A%D0%BE%D0%BC%D0%B0%D0%BD%D0%B4%D1%8B_APT#%D0%9E%D0%B1%D0%BD%D0%BE%D0%B2%D0%BB%D0%B5%D0%BD%D0%B8%D0%B5_%D0%B8%D0%BD%D1%84%D0%BE%D1%80%D0%BC%D0%B0%D1%86%D0%B8%D0%B8_%D0%BE_%D1%80%D0%B5%D0%BF%D0%BE%D0%B7%D0%B8%D1%82%D0%BE%D1%80%D0%B8%D1%8F%D1%85>apt-get update</a>
+sudo <a href=https://www.altlinux.org/%D0%9A%D0%BE%D0%BC%D0%B0%D0%BD%D0%B4%D1%8B_APT#%D0%A3%D1%81%D1%82%D0%B0%D0%BD%D0%BE%D0%B2%D0%BA%D0%B0_%D0%BF%D0%B0%D0%BA%D0%B5%D1%82%D0%BE%D0%B2>apt-get install</a> <a href=https://packages.altlinux.org/ru/sisyphus/srpms/pgbackrest/>pgbackrest</a>
 </pre>
 
-Убедиться, что PostgreSQL запущен
+<h3>Создать конфигурационный файл pgBackRest</h3>
+Конфигурационный файл pgBackRest по умолчанию - <code>/etc/pgbackrest/pgbackrest.conf</code>
+Создать каталог для конфигурационного файла
 <pre>
-$ ps -HfC postgres
-UID          PID    PPID  C STIME TTY          TIME CMD
-postgres    4562       1  0 19:39 ?        00:00:00 /usr/bin/postgres -D /var/lib/pgsql/data -p 5432
-postgres    4563    4562  0 19:39 ?        00:00:00   postgres: logger 
-postgres    4564    4562  0 19:39 ?        00:00:00   postgres: checkpointer 
-postgres    4565    4562  0 19:39 ?        00:00:00   postgres: background writer 
-postgres    4567    4562  0 19:39 ?        00:00:00   postgres: walwriter 
-postgres    4568    4562  0 19:39 ?        00:00:00   postgres: autovacuum launcher 
-postgres    4569    4562  0 19:39 ?        00:00:00   postgres: logical replication launcher
-</pre>
-
-Запуск psql
-<pre>
-sudo su - -c psql -s /bin/bash postgres
-</pre>
-
-Создание таблицы из 10000 строк
-<pre>
-create table t1 as select i, i*10 j from generate_series(1, 10000) i;
-</pre>
-
-<h3>Установка pgBackRest, создание резервной копии</h3>
-<pre>
-sudo apt-get install pgbackrest
 sudo mkdir /etc/pgbackrest/
 </pre>
 
-Создать конфигурационный файл pgBackRest (/etc/pgbackrest/pgbackrest.conf) с содержимым
+Заполнить конфигурационный файл стандартным содержимым
 <pre>
+sudo dd of=/etc/pgbackrest/pgbackrest.conf << EOF
 [srv1]
-pg1-path=/var/lib/pgsql/data/
-pg1-port=5432
+<a href=https://pgbackrest.org/configuration.html#section-stanza/option-pg-path>pg1-path</a>=/var/lib/pgsql/data/
+<a href=https://pgbackrest.org/configuration.html#section-stanza/option-pg-port>pg1-port</a>=5432
 
 [global]
-repo1-path=/var/lib/pgsql/backups/pgbackrest
-log-path=/var/lib/pgsql/backups/pgbackrest/log
-start-fast=y
-repo1-retention-full=2
+<a href=https://pgbackrest.org/configuration.html#section-repository/option-repo-path>repo1-path</a>=/var/lib/pgsql/backups/pgbackrest
+<a href=https://pgbackrest.org/configuration.html#section-log/option-log-path>log-path</a>=/var/lib/pgsql/backups/pgbackrest/log
+<a href=https://pgbackrest.org/configuration.html#section-backup/option-start-fast>start-fast</a>=y
+<a href=https://pgbackrest.org/configuration.html#section-repository/option-repo-retention-full>repo1-retention-full</a>=2
+EOF
 </pre>
 
+<h3>Создать <a href=https://pgbackrest.org/user-guide.html#quickstart/configure-stanza>станзу</a></h3>
 Залогиниться под пользователем postgres
 <pre>
 sudo su - -s /bin/bash postgres
 </pre>
 
-Создать каталоги для логов pgbackrest и резервных копий, которые он будет создавать
+<b>!!! Команды <code>pgbackrest</code> и <code>psql</code> следует исполнять от имени пользователя postgres</b>.
+
+От имени пользователя postgres создать каталоги для логов pgBackRest и его резервных копий
 <pre>
 mkdir -p /var/lib/pgsql/backups/pgbackrest/log
 </pre>
 
-Создать станзу, соответствующую локально установленному PostgreSQL
+Создать станзу srv1 (см. конфиг), соответствующую локально установленному PostgreSQL
 <pre>
-pgbackrest --stanza=srv1 stanza-create
+pgbackrest --stanza=srv1 <a href=https://pgbackrest.org/command.html#command-stanza-create>stanza-create</a>
 </pre>
 
-Изменить значения настроек archive_mode и archive_command. Убедиться, что настройка wal_level имеет значение не ниже “replica”, а max_wal_senders не меньше 3.
+Изменить значения настроек PostgreSQL <a href=https://postgrespro.ru/docs/postgresql/15/runtime-config-wal#GUC-ARCHIVE-MODE>archive_mode</a> и <a href=https://postgrespro.ru/docs/postgresql/15/runtime-config-wal#GUC-ARCHIVE-COMMAND>archive_command</a>. Убедиться, что настройка <a href=https://postgrespro.ru/docs/postgresql/15/runtime-config-wal#GUC-WAL-LEVEL>wal_level</a> имеет значение не ниже “replica”, а <a href=https://postgrespro.ru/docs/postgresql/15/runtime-config-replication#GUC-MAX-WAL-SENDERS>max_wal_senders</a> не меньше 3.
 <pre>
-echo "alter system set archive_mode = on; alter system set archive_command = 'pgbackrest --stanza=srv1 archive-push %p'; show wal_level; show max_wal_senders;"| psql
+echo "alter system set archive_mode = on; alter system set archive_command = 'pgbackrest --stanza=srv1 archive-push %p'; show wal_level; show max_wal_senders;"| <a href=https://postgrespro.ru/docs/postgresql/15/app-psql>psql</a>
 </pre>
 
-Перезапустить PostgreSQL для применения настроек.
+С другого терминала от обычного пользователя перезапустить PostgreSQL для применения настроек.
 <pre>
-pg_ctl -w -D /var/lib/pgsql/data restart
+sudo systemctl restart postgresql
 </pre>
 
-Убедиться, что все готово для резервного копирования: команда pgbackrest check не должна выдать сообщений об ошибках
+Убедиться, что все готово для резервного копирования: команда <code>pgbackrest check</code> не должна выдать сообщений об ошибках
 <pre>
 pgbackrest check --stanza=srv1
 </pre>
 
+<h3>Создание резервных копий вручную</h3>
 Создать полный бэкап.
 <pre>
 pgbackrest backup --stanza=srv1 --type=full
@@ -90,15 +74,33 @@ pgbackrest backup --stanza=srv1 --type=full
 pgbackrest backup --stanza=srv1 --type=incr
 </pre>
 
-Посмотреть информацию об имеющихся резервных копиях
+Посмотреть информацию об имеющихся резервных копиях и о прогрессе их создания
 <pre>
 pgbackrest --stanza=srv1 info
+</pre>
+
+<h3>Создание резервных копий через <a href=https://ru.wikipedia.org/wiki/Cron>Cron</a></h3>
+От имени пользователя postgres открыть редактор конфигурационного файла Cron
+<pre>
+crontab -e
+</pre>
+
+Ввести план запуска pgBackRest. Ниже - пример
+<pre>
+#minute (0-59),
+#|      hour (0-23),
+#|      |       day of the month (1-31),
+#|      |       |       month of the year (1-12),
+#|      |       |       |       day of the week (0-6 with 0=Sunday).
+#|      |       |       |       |       commands
+00      22      *       *       0     pgbackrest --type=full --stanza=srv1 backup
+00      22      *       *       1-6   pgbackrest --type=incr --stanza=srv1 backup
 </pre>
 
 <h3>Восстановление</h3>
 Остановить PostgreSQL
 <pre>
-sudo systemctl stop postgresql.service
+sudo systemctl stop postgresql
 </pre>
 
 Удалить каталог с его данными
@@ -113,7 +115,7 @@ sudo su - -c "pgbackrest --stanza=srv1 restore" -s /bin/bash postgres
 
 Запустить PostgreSQL
 <pre>
-sudo systemctl start postgresql.service
+sudo systemctl start postgresql
 </pre>
 
 Подробнее: <a>https://pgbackrest.org/user-guide.html</a>

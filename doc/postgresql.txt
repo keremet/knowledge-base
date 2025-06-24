@@ -1,0 +1,50 @@
+PostgreSQL в ALT Linux
+<h3>Установка PostgreSQL, создание кластера баз данных, запуск PostgreSQL</h3>
+При необходимости обновить информацию о репозиториях
+<pre>
+sudo <a href=https://www.altlinux.org/%D0%9A%D0%BE%D0%BC%D0%B0%D0%BD%D0%B4%D1%8B_APT#%D0%9E%D0%B1%D0%BD%D0%BE%D0%B2%D0%BB%D0%B5%D0%BD%D0%B8%D0%B5_%D0%B8%D0%BD%D1%84%D0%BE%D1%80%D0%BC%D0%B0%D1%86%D0%B8%D0%B8_%D0%BE_%D1%80%D0%B5%D0%BF%D0%BE%D0%B7%D0%B8%D1%82%D0%BE%D1%80%D0%B8%D1%8F%D1%85>apt-get update</a>
+</pre>
+
+Установка и запуск
+<pre>
+sudo <a href=https://www.altlinux.org/%D0%9A%D0%BE%D0%BC%D0%B0%D0%BD%D0%B4%D1%8B_APT#%D0%A3%D1%81%D1%82%D0%B0%D0%BD%D0%BE%D0%B2%D0%BA%D0%B0_%D0%BF%D0%B0%D0%BA%D0%B5%D1%82%D0%BE%D0%B2>apt-get install</a> -y <a href=https://packages.altlinux.org/ru/p10/srpms/postgresql15-1C/3215616059492679736>postgresql15-1C-contrib</a> && \
+sudo /etc/init.d/postgresql <a href=https://git.altlinux.org/gears/p/postgresql15-1C.git?p=postgresql15-1C.git;a=blob;f=postgresql.init.in;h=cc5956685d041e4004faea1a080da47e1b92c275;hb=d24c88777a50be3c726a0e2eb4258439f6ab7c82#l111>initdb</a> && \
+sudo systemctl enable --now postgresql
+</pre>
+
+Убедиться, что PostgreSQL запущен
+<pre>
+ps -HfC postgres
+</pre>
+
+Должно получиться что-то похожее
+<pre>
+$ ps -HfC postgres
+UID          PID    PPID  C STIME TTY          TIME CMD
+postgres    4562       1  0 19:39 ?        00:00:00 /usr/bin/postgres -D /var/lib/pgsql/data -p 5432
+postgres    4563    4562  0 19:39 ?        00:00:00   postgres: logger 
+postgres    4564    4562  0 19:39 ?        00:00:00   postgres: checkpointer 
+postgres    4565    4562  0 19:39 ?        00:00:00   postgres: background writer 
+postgres    4567    4562  0 19:39 ?        00:00:00   postgres: walwriter 
+postgres    4568    4562  0 19:39 ?        00:00:00   postgres: autovacuum launcher 
+postgres    4569    4562  0 19:39 ?        00:00:00   postgres: logical replication launcher
+</pre>
+
+Еще вариант
+<pre>
+systemctl status postgresql
+</pre>
+
+<h3>Подключение</h3>
+Запуск <a href=https://postgrespro.ru/docs/postgresql/15/app-psql>psql</a>
+<pre>
+sudo su - -c psql -s /bin/bash postgres
+</pre>
+
+<h3>Создание таблицы из 10000 строк</h3>
+<pre>
+<a href=https://postgrespro.ru/docs/postgresql/15/sql-createtable>create table</a> t1 as select i, i*10 j from <a href=https://postgrespro.ru/docs/postgresql/15/functions-srf>generate_series</a>(1, 10000) i;
+</pre>
+
+Подробнее: <a>https://www.postgresql.org/docs/15/index.html</a>
+ <a>https://postgrespro.ru/docs/postgresql/15/index</a>
