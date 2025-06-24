@@ -1,0 +1,119 @@
+pgBackRest в ALT Linux
+<h3>Установка PostgreSQL, создание базы, заполнение ее тестовыми данными</h3>
+Для тестирования потребуется PostgreSQL, поэтому установим его.
+<pre>
+sudo apt-get update
+sudo apt-get install postgresql15-1C-contrib
+sudo /etc/init.d/postgresql initdb
+sudo systemctl enable --now postgresql.service
+</pre>
+
+Убедиться, что PostgreSQL запущен
+<pre>
+$ ps -HfC postgres
+UID          PID    PPID  C STIME TTY          TIME CMD
+postgres    4562       1  0 19:39 ?        00:00:00 /usr/bin/postgres -D /var/lib/pgsql/data -p 5432
+postgres    4563    4562  0 19:39 ?        00:00:00   postgres: logger 
+postgres    4564    4562  0 19:39 ?        00:00:00   postgres: checkpointer 
+postgres    4565    4562  0 19:39 ?        00:00:00   postgres: background writer 
+postgres    4567    4562  0 19:39 ?        00:00:00   postgres: walwriter 
+postgres    4568    4562  0 19:39 ?        00:00:00   postgres: autovacuum launcher 
+postgres    4569    4562  0 19:39 ?        00:00:00   postgres: logical replication launcher
+</pre>
+
+Запуск psql
+<pre>
+sudo su - -c psql -s /bin/bash postgres
+</pre>
+
+Создание таблицы из 10000 строк
+<pre>
+create table t1 as select i, i*10 j from generate_series(1, 10000) i;
+</pre>
+
+<h3>Установка pgBackRest, создание резервной копии</h3>
+<pre>
+sudo apt-get install pgbackrest
+sudo mkdir /etc/pgbackrest/
+</pre>
+
+Создать конфигурационный файл pgBackRest (/etc/pgbackrest/pgbackrest.conf) с содержимым
+<pre>
+[srv1]
+pg1-path=/var/lib/pgsql/data/
+pg1-port=5432
+
+[global]
+repo1-path=/var/lib/pgsql/backups/pgbackrest
+log-path=/var/lib/pgsql/backups/pgbackrest/log
+start-fast=y
+repo1-retention-full=2
+</pre>
+
+Залогиниться под пользователем postgres
+<pre>
+sudo su - -s /bin/bash postgres
+</pre>
+
+Создать каталоги для логов pgbackrest и резервных копий, которые он будет создавать
+<pre>
+mkdir -p /var/lib/pgsql/backups/pgbackrest/log
+</pre>
+
+Создать станзу, соответствующую локально установленному PostgreSQL
+<pre>
+pgbackrest --stanza=srv1 stanza-create
+</pre>
+
+Изменить значения настроек archive_mode и archive_command. Убедиться, что настройка wal_level имеет значение не ниже “replica”, а max_wal_senders не меньше 3.
+<pre>
+echo "alter system set archive_mode = on; alter system set archive_command = 'pgbackrest --stanza=srv1 archive-push %p'; show wal_level; show max_wal_senders;"| psql
+</pre>
+
+Перезапустить PostgreSQL для применения настроек.
+<pre>
+pg_ctl -w -D /var/lib/pgsql/data restart
+</pre>
+
+Убедиться, что все готово для резервного копирования: команда pgbackrest check не должна выдать сообщений об ошибках
+<pre>
+pgbackrest check --stanza=srv1
+</pre>
+
+Создать полный бэкап.
+<pre>
+pgbackrest backup --stanza=srv1 --type=full
+</pre>
+
+Создать инкрементальный бэкап
+<pre>
+pgbackrest backup --stanza=srv1 --type=incr
+</pre>
+
+Посмотреть информацию об имеющихся резервных копиях
+<pre>
+pgbackrest --stanza=srv1 info
+</pre>
+
+<h3>Восстановление</h3>
+Остановить PostgreSQL
+<pre>
+sudo systemctl stop postgresql.service
+</pre>
+
+Удалить каталог с его данными
+<pre>
+sudo rm -rf /var/lib/pgsql/data
+</pre>
+
+Выполнить восстановление из последней резервной копии
+<pre>
+sudo su - -c "pgbackrest --stanza=srv1 restore" -s /bin/bash postgres
+</pre>
+
+Запустить PostgreSQL
+<pre>
+sudo systemctl start postgresql.service
+</pre>
+
+Подробнее: <a>https://pgbackrest.org/user-guide.html</a>
