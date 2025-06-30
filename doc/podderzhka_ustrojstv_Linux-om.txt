@@ -1,0 +1,3 @@
+Поддержка устройств Linux-ом
+
+<a href=zvuk_v_Linux.html>Звук в Linux</a>
