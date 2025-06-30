@@ -1,4 +1,5 @@
 База знаний
  <a href=pgbackrest.html>pgBackRest</a>
  <a href=postgresql.html>PostgreSQL</a>
+ <a href=postgresql_upgrade.html>Обновление PostgreSQL c 15 на 17</a>
  <a href=podderzhka_ustrojstv_Linux-om.html>Поддержка устройств Linux-ом</a>

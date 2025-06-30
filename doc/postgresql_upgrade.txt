@@ -1,0 +1,51 @@
+Обновление PostgreSQL c 15 на 17
+Компиляция версии 15
+<pre>
+git checkout REL_15_STABLE 
+git clean -dxf
+./configure --prefix=/tmp/postgresql_bin15 && make -j12 -s && make -s install
+</pre>
+
+Компиляция версии 17
+<pre>
+git checkout REL_17_STABLE 
+git clean -dxf
+./configure --prefix=/tmp/postgresql_bin17 && make -j12 -s && make -s install
+</pre>
+
+
+Создать базу данных на PostgreSQL 15 с одной таблицей
+<pre>
+export PGDATABASE=postgres
+export PGDATA=/tmp/ggg
+export PATH=/tmp/postgresql_bin15/bin:/home/keremet/bin:/usr/local/bin:/usr/bin:/bin:/usr/games
+rm -rf /tmp/ggg ; initdb -k
+pg_ctl -w  -D /tmp/ggg -l /tmp/logfile start
+psql -c "create table t1 as select i, i*10 j from generate_series(1, 10000) i;"
+pg_ctl -w  -D /tmp/ggg -l /tmp/logfile stop
+</pre>
+
+Создать каталог с теми же данными, но в формате PostgreSQL 17
+<pre>
+export PGDATA=/tmp/ggg17
+export PATH=/tmp/postgresql_bin17/bin:/home/keremet/bin:/usr/local/bin:/usr/bin:/bin:/usr/games
+initdb -k
+pg_upgrade -b /tmp/postgresql_bin15/bin -d /tmp/ggg -D /tmp/ggg17
+</pre>
+
+Запустить PostgreSQL 17
+<pre>
+pg_ctl -w  -D /tmp/ggg17/ -l /tmp/logfile start
+</pre>
+
+Рекомендуется сделать очистку таблиц
+<pre>
+psql -c vacuum
+</pre>
+
+Убедиться, что данные на месте
+<pre>
+psql -c "select * from t1"
+</pre>
+
+Подробнее: <a>https://postgrespro.ru/docs/postgresql/current/pgupgrade</a>
