@@ -1,0 +1,2 @@
+Язык C
+ <a href=code_examples.html>Примеры кода</a>

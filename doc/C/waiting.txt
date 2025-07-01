@@ -1,0 +1,6 @@
+Ожидание
+Ждать, пока существует файл
+<pre>
+	while(access("/tmp/ffffff", F_OK) == 0)
+		sleep(1);
+</pre>
