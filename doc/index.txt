@@ -3,4 +3,6 @@
  <a href=postgresql.html>PostgreSQL в ALT Linux</a>
  <a href=postgresql_upgrade.html>Обновление PostgreSQL c 15 на 17</a>
  <a href=podderzhka_ustrojstv_Linux-om.html>Поддержка устройств Linux-ом</a>
+ <a href=ssh/index.html>SSH</a>
+ <a href=greenplum/index.html>Greenplum</a>
  <a href=C/index.html>Язык C</a>

@@ -1,0 +1,159 @@
+Компиляция и запуск Arenadata DB 6 на ALT Linux p10
+Установка зависимостей 
+<pre>
+sudo apt-get update
+sudo apt-get install -y git gcc gcc-c++ python2-base libreadline-devel zlib-devel libapr1-devel libevent-devel libcurl-devel bzlib-devel libxerces-c-devel python-dev bison flex  libyaml-devel libzstd-devel-static net-tools
+sudo ln -s python2 /usr/bin/python
+</pre>
+
+Настройка systemd (включаем RemoveIPC, включаем KillExcludeUsers для root и пользователя, из-под которого будем работать)
+<pre>
+sudo sed -i -e "s/^#RemoveIPC=yes$/RemoveIPC=no/" -e "s/^#KillExcludeUsers=root$/KillExcludeUsers=root $USER/" /etc/systemd/logind.conf
+</pre>
+
+Перезагрузка для применения изменений
+<pre>
+sudo reboot
+</pre>
+
+Скачать исходники ветки adb-6.x и перейти в каталог с ними 
+<pre>
+git clone https://github.com/arenadata/gpdb -b adb-6.x
+cd gpdb
+</pre>
+
+Скачать подмодули
+<pre>
+git submodule update --init
+</pre>
+
+Сборка с максимальной отладочной информацией. Для свежего компилятора может потребоваться параметр <code>-Wno-error=nonnull-compare</code>
+<pre>
+./configure --enable-debug-extensions --with-python --with-pythonsrc-ext --disable-gpcloud --enable-depend --enable-cassert CFLAGS="-O0 -g3 -ggdb -fno-omit-frame-pointer -Wno-error=deprecated-copy" CXXFLAGS="-O0 -g3 -fno-omit-frame-pointer -Wno-error=deprecated-copy" --prefix=$HOME/gpdb_bin
+
+make -s -j`nproc`
+make -s install
+</pre>
+
+Настраиваем доступ по <a href=../ssh/dostup_po_kluchu.html>SSH по ключу</a> к сегментным серверам с координатора.
+
+Затем с координатора на самого себя
+<pre>
+cat ~/.ssh/id_rsa.pub >> ~/.ssh/authorized_keys
+</pre>
+
+Тест
+<pre>
+ssh $(hostname) date
+</pre>
+
+Архив бинарников
+<pre>
+cd
+tar -czf /tmp/gpdb_bin.tar.gz gpdb_bin
+cd -
+</pre>
+
+Заполнить файл /etc/hosts соответствиями IP и имя сегмента(например: seg1, seg2, seg3 - эти имена должны совпадать с содержимым <code>/etc/hostname</code> серверов).
+<pre>
+sudo vi /etc/hosts
+</pre>
+
+Разместить исполняемые файл на сегменты
+<pre>
+cat /tmp/gpdb_bin.tar.gz | ssh seg1 "tar xzf -"
+cat /tmp/gpdb_bin.tar.gz | ssh seg2 "tar xzf -"
+cat /tmp/gpdb_bin.tar.gz | ssh seg3 "tar xzf -"
+</pre>
+
+Удалить архив. Он больше не пригодится
+<pre>
+rm /tmp/gpdb_bin.tar.gz
+</pre>
+
+Создать файл с адресами сегментных серверов
+<pre>
+dd of=hostfile_gpinitsystem << EOF
+seg1
+seg2
+seg3
+EOF
+</pre>
+
+Инициализировать переменные окружения
+<pre>
+source ~/gpdb_bin/greenplum_path.sh
+</pre>
+
+Скопировать конфигурационный файл
+<pre>
+cp $GPHOME/docs/cli_help/gpconfigs/gpinitsystem_config ./
+vi gpinitsystem_config
+</pre>
+
+Изменить, чтоб было по 2 сегмента на сервер
+<pre>
+declare -a DATA_DIRECTORY=(/home/keremet/data /home/keremet/data)
+</pre>
+
+Создать каталоги для данных сегментов на всех сегментных серверах
+<pre>
+$ gpssh -f hostfile_gpinitsystem 
+=> mkdir /home/keremet/data
+[seg2]
+[seg3]
+[seg1]
+=>
+</pre>
+
+В переменной <code>MASTER_HOSTNAME</code> указать IP координатора
+
+Создать каталог для данных координатора
+<pre>
+mkdir /home/keremet/master_data
+</pre>
+и прописать его в конфиге в переменной <code>MASTER_DIRECTORY</code>
+<pre>
+MASTER_DIRECTORY=/home/keremet/master_data
+</pre>
+
+Установить зависимости на сегменты
+<pre>
+$ gpssh -f hostfile_gpinitsystem 
+=> mkdir /home/keremet/data
+[seg2]
+[seg3]
+[seg1]
+=> sudo apt-get update
+=> sudo apt-get install -y git gcc gcc-c++ python2-base libreadline-devel zlib-devel libapr1-devel libevent-devel libcurl-devel bzlib-devel libxerces-c-devel python-dev bison flex  libyaml-devel libzstd-devel-static net-tools
+=> sudo ln -s python2 /usr/bin/python
+</pre>
+
+Создать кластер
+<pre>
+gpinitsystem -c gpinitsystem_config -h hostfile_gpinitsystem
+</pre>
+
+Если в процессе создания возникла ошибка, перед повторной попыткой следует очистить каталоги с данными. На координаторе
+<pre>
+rm -rf /home/keremet/master_data/*
+</pre>
+и на сегментах
+<pre>
+$ gpssh -f hostfile_gpinitsystem 
+=> rm -rf /home/keremet/data/*
+[seg2]
+[seg1]
+[seg3]
+=>
+</pre>
+
+Подключение к кластеру
+<pre>
+psql postgres
+</pre>
+
+Тестовый запрос
+<pre>
+select * from gp_segment_configuration order by 2,3;
+</pre>

@@ -1,0 +1,2 @@
+Greenplum
+ <a href=adb.html>Компиляция и запуск Arenadata DB 6 на ALT Linux p10</a>

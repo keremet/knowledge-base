@@ -1,0 +1,27 @@
+SSH. Доступ по ключу
+Проверяем, есть ли ключ
+<pre>
+ls ~/.ssh/id_rsa*
+</pre>
+
+Если нет ключа, генерим
+<pre>
+ssh-keygen -t rsa -b 4096 -f ~/.ssh/id_rsa -N ""
+</pre>
+
+Добавляем ключ на сервер в файл ~/.ssh/authorized_keys
+<pre>
+cat ~/.ssh/id_rsa.pub | ssh user@server "mkdir -p ~/.ssh && cat >> ~/.ssh/authorized_keys"
+</pre>
+
+Тестим
+<pre>
+ssh user@server
+</pre>
+
+Вероятно, что может не получиться из-за прав доступа к домашнему каталогу пользователя. Они должны быть 750.
+
+Для выяснения причины можно запустить sshd на сервере в отладочном режиме
+<pre>
+/usr/sbin/sshd -Dd
+</pre>
