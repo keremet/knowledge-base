@@ -1,0 +1,10 @@
+Обсидиан
+Сначала надо поставить EPM - это программа для установки всякой проприетарщины в Альт
+<pre>
+sudo apt-get install /usr/bin/epm
+</pre>
+
+Установка Обсидиан с помощью EPM
+<pre>
+sudo epm play obsidian
+</pre>

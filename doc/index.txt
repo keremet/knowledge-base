@@ -6,3 +6,4 @@
  <a href=ssh/index.html>SSH</a>
  <a href=greenplum/index.html>Greenplum</a>
  <a href=C/index.html>Язык C</a>
+ <a href=obsidian.html>Обсидиан</a>
